@@ -561,9 +561,9 @@ func (s *Service) runInstance(role string, i *infrav1.Instance) (*infrav1.Instan
 
 	s.scope.Debug("userData size", "bytes", len(*i.UserData), "role", role)
 
+	existingNetworkInterface := false
 	if len(i.NetworkInterfaces) > 0 {
 		netInterfaces := make([]*ec2.InstanceNetworkInterfaceSpecification, 0, len(i.NetworkInterfaces))
-
 		for index, id := range i.NetworkInterfaces {
 			netInterfaces = append(netInterfaces, &ec2.InstanceNetworkInterfaceSpecification{
 				NetworkInterfaceId: aws.String(id),
@@ -573,6 +573,7 @@ func (s *Service) runInstance(role string, i *infrav1.Instance) (*infrav1.Instan
 		netInterfaces[0].AssociatePublicIpAddress = i.PublicIPOnLaunch
 
 		input.NetworkInterfaces = netInterfaces
+		existingNetworkInterface = true
 	} else {
 		input.NetworkInterfaces = []*ec2.InstanceNetworkInterfaceSpecification{
 			{
@@ -623,7 +624,11 @@ func (s *Service) runInstance(role string, i *infrav1.Instance) (*infrav1.Instan
 	}
 
 	if len(i.Tags) > 0 {
+
 		resources := []string{ec2.ResourceTypeInstance, ec2.ResourceTypeVolume, ec2.ResourceTypeNetworkInterface}
+		if existingNetworkInterface {
+			resources = []string{ec2.ResourceTypeInstance, ec2.ResourceTypeVolume}
+		}
 		for _, r := range resources {
 			spec := &ec2.TagSpecification{ResourceType: aws.String(r)}
 
